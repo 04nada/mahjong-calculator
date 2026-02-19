@@ -1,3 +1,5 @@
+from ast import Suite
+
 from mahjong import *
 
 tf = TileFactory()
@@ -57,3 +59,89 @@ def test_meld_factory():
     assert mf.create_meld('555z') == Meld([HonorTile(Dragon.WHITE), HonorTile(Dragon.WHITE), HonorTile(Dragon.WHITE)])
     assert mf.create_meld('666z') == Meld([HonorTile(Dragon.GREEN), HonorTile(Dragon.GREEN), HonorTile(Dragon.GREEN)])
     assert mf.create_meld('777z') == Meld([HonorTile(Dragon.RED), HonorTile(Dragon.RED), HonorTile(Dragon.RED)])
+
+def test_hand_factory():
+    assert hf.create_hand('123m 44p 567s 222p-555z') == Hand(
+        [
+            SuitedTile(1, TileSuit.MAN),
+            SuitedTile(2, TileSuit.MAN),
+            SuitedTile(3, TileSuit.MAN),
+            SuitedTile(4, TileSuit.PIN),
+            SuitedTile(4, TileSuit.PIN),
+            SuitedTile(5, TileSuit.SOU),
+            SuitedTile(6, TileSuit.SOU),
+            SuitedTile(7, TileSuit.SOU),
+        ],
+        [
+            Meld(
+                [
+                    SuitedTile(2, TileSuit.PIN),
+                    SuitedTile(2, TileSuit.PIN),
+                    SuitedTile(2, TileSuit.PIN),
+                ],
+                is_open=True
+            ),
+            Meld(
+                [
+                    HonorTile(Dragon.WHITE),
+                    HonorTile(Dragon.WHITE),
+                    HonorTile(Dragon.WHITE),
+                ],
+                is_open=True
+            )
+        ]
+    )
+
+    assert hf.create_hand('19m 19p 19s 1234567z') == Hand(
+        [
+            SuitedTile(1, TileSuit.MAN),
+            SuitedTile(9, TileSuit.MAN),
+            SuitedTile(1, TileSuit.PIN),
+            SuitedTile(9, TileSuit.PIN),
+            SuitedTile(1, TileSuit.SOU),
+            SuitedTile(9, TileSuit.SOU),
+            HonorTile(Wind.EAST),
+            HonorTile(Wind.SOUTH),
+            HonorTile(Wind.WEST),
+            HonorTile(Wind.NORTH),
+            HonorTile(Dragon.WHITE),
+            HonorTile(Dragon.GREEN),
+            HonorTile(Dragon.RED),
+        ],
+        []
+    )
+
+    assert hf.create_hand('50p 55z 444m-666z-777z') == Hand(
+        [
+            SuitedTile(5, TileSuit.PIN),
+            SuitedTile(5, TileSuit.PIN, True),
+            HonorTile(Dragon.WHITE),
+            HonorTile(Dragon.WHITE),
+        ],
+        [
+            Meld(
+                [
+                    SuitedTile(4, TileSuit.MAN),
+                    SuitedTile(4, TileSuit.MAN),
+                    SuitedTile(4, TileSuit.MAN),
+                ],
+                is_open=True
+            ),
+            Meld(
+                [
+                    HonorTile(Dragon.GREEN),
+                    HonorTile(Dragon.GREEN),
+                    HonorTile(Dragon.GREEN),
+                ],
+                is_open=True
+            ),
+            Meld(
+                [
+                    HonorTile(Dragon.RED),
+                    HonorTile(Dragon.RED),
+                    HonorTile(Dragon.RED),
+                ],
+                is_open=True
+            ),
+        ]
+    )
