@@ -4,8 +4,8 @@ from mahjong import *
 
 def test_enum_values():
     assert TileSuit.MAN.value == 0
-    assert TileSuit.PIN.value == MAX_TILE_RANK-MIN_TILE_RANK+1
-    assert TileSuit.SOU.value == 2*(MAX_TILE_RANK-MIN_TILE_RANK+1)
+    assert TileSuit.PIN.value == 9
+    assert TileSuit.SOU.value == 18
     assert Wind.EAST.value == 1
     assert Wind.SOUTH.value == 2
     assert Wind.WEST.value == 3
