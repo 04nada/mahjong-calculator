@@ -131,6 +131,11 @@ class MeldGenerator:
                 tiles_sorteddict[t] = tiles_sorteddict.get(t, 0) + 2
 
 class RiichiMahjongScorer:
+    meld_generator: MeldGenerator
+
+    def __init__(self, meld_generator: MeldGenerator):
+        self.meld_generator = meld_generator
+
     def count_yakuman(self, yakuman: dict[Yakuman, int]) -> int:
         return sum(yakuman.values())
     
@@ -327,8 +332,8 @@ class RiichiMahjongScorer:
 tf = TileFactory()
 mf = MeldFactory(tf)
 hf = HandFactory(tf, mf)
-scorer = RiichiMahjongScorer()
 mg = MeldGenerator()
+scorer = RiichiMahjongScorer(mg)
 
 str1 = '22223333444455m'
 hand1 = hf.create_hand(str1, 1)
