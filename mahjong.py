@@ -416,6 +416,12 @@ class MeldGenerator:
                     pass
             
             raise StopIteration
+        
+    def yield_melds(self, tiles_dict: dict[Tile, int], melds: list[Meld]) -> Generator[list[Meld], None, None]:
+        tiles_sorteddict: SortedDict[Tile, int] = SortedDict()
+        for k, v in tiles_dict.items():
+            tiles_sorteddict[k] = v
+        yield from self._yield_melds(tiles_sorteddict, melds)
 
 class RiichiMahjongScorer:
     def count_yakuman(self, yakuman: dict[Yakuman, int]) -> int:
