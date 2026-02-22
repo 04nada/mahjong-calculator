@@ -45,6 +45,9 @@ class Wind(Enum):
     WEST = auto()
     NORTH = auto()
 
+    def __hash__(self) -> int:
+        return super().__hash__()
+
     def __repr__(self) -> str:
         match self:
             case Wind.EAST:
@@ -74,7 +77,7 @@ class Wind(Enum):
     def __eq__(self, other: object) -> bool:
         match other:
             case Wind():
-                return self == other
+                return self.value == other.value
             case Dragon():
                 return True
             case _:
@@ -83,7 +86,7 @@ class Wind(Enum):
     def __lt__(self, other: object) -> bool:
         match other:
             case Wind():
-                return self < other
+                return self.value < other.value
             case Dragon():
                 return True
             case _:
@@ -97,6 +100,9 @@ class Dragon(Enum):
     WHITE = auto()
     GREEN = auto()
     RED = auto()
+
+    def __hash__(self) -> int:
+        return super().__hash__()
 
     def __repr__(self) -> str:
         match self:
@@ -268,7 +274,7 @@ class Meld:
         return len(self.tiles)
 
     def __repr__(self):
-        return f'{'Open' if self.is_open else 'Closed'}Meld[{' '.join([*map(str, self.tiles)])}]'
+        return f'{'Open' if self.is_open else 'Closed'}Meld[{' '.join([*map(repr, self.tiles)])}]'
 
     def __str__(self):
         return f'{'Open' if self.is_open else 'Closed'}Meld[{' '.join([*map(str, self.tiles)])}]'
@@ -369,7 +375,7 @@ class Hand:
     @property
     def is_open(self) -> bool:
         return len(self.open_melds) > 0
-    
+
 class HandFactory:
     tile_factory: TileFactory
     meld_factory: MeldFactory
@@ -449,53 +455,82 @@ class UnderState(StrEnum):
 
 class MeldGenerator:
     def _yield_melds(self, tiles_sorteddict: SortedDict[Tile, int], melds: list[Meld]) -> Generator[list[Meld], None, None]:
-        # TODO: implement meld recursion
-        if sum(tiles_sorteddict.values()) == 0:
+        if sum(tiles_sorteddict.values()) % 3 != 0:
+            # check if tile count can be grouped into 3s
+            raise ValueError('Total number of tiles not divisible by 3; cannot group into melds')
+        elif sum(tiles_sorteddict.values()) == 0:
+            # Base Case: yield melds if there are no more tiles to be processed
             yield melds
-        elif sum(tiles_sorteddict.values()) < 3:
-            raise StopIteration
         else:
+            # get leftmost "unmelded" tile in dictionary (hence the SortedDict use)
             first_tile, first_tile_freq = tiles_sorteddict.peekitem(index=0)
 
-            # check if first_tile can be part of a triple
+            # check if first_tile can be part of a triplet
             if first_tile_freq >= 3:
+                # remove triplet of first_tile
                 tiles_sorteddict[first_tile] -= 3
+                if tiles_sorteddict[first_tile] == 0:
+                    del tiles_sorteddict[first_tile]
+
                 new_meld = Meld([first_tile for _ in range(3)])
                 melds.append(new_meld)
                 yield from self._yield_melds(tiles_sorteddict, melds)
 
                 # undo updates
-                tiles_sorteddict[first_tile] += 3
+                tiles_sorteddict[first_tile] = tiles_sorteddict.get(first_tile, 0) + 3
                 melds.pop()
 
-            # check if first_tile can be part of a triple
+            # check if first_tile can be part of a sequence
             match first_tile:
                 case SuitedTile(rank=rank, suit=suit):
                     next1_tile = SuitedTile(rank+1, suit)
                     next2_tile = SuitedTile(rank+2, suit)
-                    if rank <= 7 and tiles_sorteddict[next1_tile] >= 1 and tiles_sorteddict[next2_tile] >= 1:
-                        tiles_sorteddict[first_tile] -= 1
-                        tiles_sorteddict[next1_tile] -= 1
-                        tiles_sorteddict[next2_tile] -= 1
-                        new_meld = Meld([first_tile, next1_tile, next2_tile])
-                        melds.append(new_meld)
+                    new_meld_list: list[Tile] = [first_tile, next1_tile, next2_tile]
 
+                    if rank <= 7 and tiles_sorteddict.get(next1_tile, 0) >= 1 and tiles_sorteddict.get(next2_tile, 0) >= 1:
+                        # remove sequence starting with first_tile
+                        for t in new_meld_list:
+                            tiles_sorteddict[t] -= 1
+                            if tiles_sorteddict[t] == 0:
+                                del tiles_sorteddict[t]
+
+                        new_meld = Meld(new_meld_list)
+                        melds.append(new_meld)
                         yield from self._yield_melds(tiles_sorteddict, melds)
+
                         # undo updates
-                        tiles_sorteddict[first_tile] += 1
-                        tiles_sorteddict[next1_tile] += 1
-                        tiles_sorteddict[next2_tile] += 1
+                        for t in new_meld_list:
+                            tiles_sorteddict[t] = tiles_sorteddict.get(t, 0) + 1
                         melds.pop()
                 case _:
                     pass
-            
-            raise StopIteration
         
     def yield_melds(self, tiles_dict: dict[Tile, int], melds: list[Meld]) -> Generator[list[Meld], None, None]:
         tiles_sorteddict: SortedDict[Tile, int] = SortedDict()
         for k, v in tiles_dict.items():
             tiles_sorteddict[k] = v
         yield from self._yield_melds(tiles_sorteddict, melds)
+
+    def yield_melds_with_pair(self, tiles_dict: dict[Tile, int], melds: list[Meld]) -> Generator[tuple[list[Meld], tuple[Tile, Tile]], None, None]:
+        tiles_sorteddict: SortedDict[Tile, int] = SortedDict()
+        for k, v in tiles_dict.items():
+            tiles_sorteddict[k] = v
+
+        TILES: list[Tile] = [*tiles_sorteddict.keys()]
+        for t in TILES:
+            # check if pair can be retrieved from current tile
+            if tiles_sorteddict[t] >= 2:
+                # remove pair of current tile
+                pair: tuple[Tile, Tile] = (t, t)
+                tiles_sorteddict[t] -= 2
+                if tiles_sorteddict[t] == 0:
+                    del tiles_sorteddict[t]
+
+                for melds in self._yield_melds(tiles_sorteddict, []):
+                    yield melds, pair
+
+                # undo updates
+                tiles_sorteddict[t] = tiles_sorteddict.get(t, 0) + 2
 
 class RiichiMahjongScorer:
     def count_yakuman(self, yakuman: dict[Yakuman, int]) -> int:
@@ -697,13 +732,8 @@ hf = HandFactory(tf, mf)
 scorer = RiichiMahjongScorer()
 mg = MeldGenerator()
 
-hand1 = hf.create_hand('233445m 345s 2377p', 1)
-#print(hand1)
-#print(repr(hand1))
-
-hand2 = hf.create_hand('222m 3334p 555s-222z', 1)
-#print(hand2)
-#print(repr(hand2))
-
-for melds in mg.yield_melds(hand1.all_tiles_dict, []):
-    print(melds)
+str1 = '22223333444455m'
+hand1 = hf.create_hand(str1, 1)
+print(str1)
+for melds, pair in mg.yield_melds_with_pair(hand1.all_tiles_dict, []):
+    print(*[str(meld) for meld in melds], *pair)
