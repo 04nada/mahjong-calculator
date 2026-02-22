@@ -51,18 +51,76 @@ def test_13o_wrong():
 
 # ---
 
-# TODO onwards
 # MARK: 4CT
 # Four Concealed Triplets (+ Tanki Wait)
 
 def test_4ct():
-    pass
+    assert scorer.get_yakuman(
+        hf.create_hand('222444m 444s 2233z'), tf.create_tile('2z'),
+        win_type=WinType.TSUMO
+    ) == {
+        SingleYakuman.FOUR_CONCEALED_TRIPLETS: 1
+    }
+
+    assert scorer.get_yakuman(
+        hf.create_hand('222444m 444s 2233z'), tf.create_tile('3z'),
+        win_type=WinType.TSUMO
+    ) == {
+        SingleYakuman.FOUR_CONCEALED_TRIPLETS: 1
+    }
+
+    assert scorer.get_yakuman(
+        hf.create_hand('11122m 444666p 99s'), tf.create_tile('2m'),
+        win_type=WinType.TSUMO
+    ) == {
+        SingleYakuman.FOUR_CONCEALED_TRIPLETS: 1
+    }
+
+    assert scorer.get_yakuman(
+        hf.create_hand('11122m 444666p 99s'), tf.create_tile('9s'),
+        win_type=WinType.TSUMO
+    ) == {
+        SingleYakuman.FOUR_CONCEALED_TRIPLETS: 1
+    }
+
+    # TODO: add tests with closed kan
 
 def test_4ct_tanki():
+    assert scorer.get_yakuman(
+        hf.create_hand('111222m 444666p 9s'), tf.create_tile('9s'),
+        win_type=WinType.TSUMO
+    ) == {
+        DoubleYakuman.FOUR_CONCEALED_TRIPLETS_TANKI: 2
+    }
+
+    assert scorer.get_yakuman(
+        hf.create_hand('333444666p 444s 1z'), tf.create_tile('1z'),
+        win_type=WinType.RON
+    ) == {
+        DoubleYakuman.FOUR_CONCEALED_TRIPLETS_TANKI: 2
+    }
+
+    # TODO: add tests with closed kan
     pass
 
 def test_4ct_wrong():
-    pass
+    # cannot Ron last triplet; only 3CT
+    assert scorer.get_yakuman(
+        hf.create_hand('11122m 444666p 99s'), tf.create_tile('2m'),
+        win_type=WinType.RON
+    ) == {}
+
+    # cannot Ron last triplet; only 3CT
+    assert scorer.get_yakuman(
+        hf.create_hand('11122m 444666p 99s'), tf.create_tile('9s'),
+        win_type=WinType.RON
+    ) == {}
+
+    # not winning tile
+    assert scorer.get_yakuman(
+        hf.create_hand('333555m 222444p 1z'), tf.create_tile('2z'),
+        win_type=WinType.RON
+    ) == {}
 
 # ---
 
