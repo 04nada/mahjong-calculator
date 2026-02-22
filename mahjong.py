@@ -45,9 +45,6 @@ class Wind(Enum):
     WEST = auto()
     NORTH = auto()
 
-    def __hash__(self) -> int:
-        return super().__hash__()
-
     def __repr__(self) -> str:
         match self:
             case Wind.EAST:
@@ -71,15 +68,6 @@ class Wind(Enum):
                 return 'WEST'
             case Wind.NORTH:
                 return 'NORTH'
-            case _:
-                raise ValueError
-
-    def __eq__(self, other: object) -> bool:
-        match other:
-            case Wind():
-                return self.value == other.value
-            case Dragon():
-                return True
             case _:
                 raise ValueError
 
@@ -101,9 +89,6 @@ class Dragon(Enum):
     GREEN = auto()
     RED = auto()
 
-    def __hash__(self) -> int:
-        return super().__hash__()
-
     def __repr__(self) -> str:
         match self:
             case Dragon.WHITE:
@@ -123,15 +108,6 @@ class Dragon(Enum):
                 return 'GREEN'
             case Dragon.RED:
                 return 'RED'
-            case _:
-                raise ValueError
-
-    def __eq__(self, other: object) -> bool:
-        match other:
-            case Wind():
-                return False
-            case Dragon():
-                return self.value == other.value
             case _:
                 raise ValueError
 
@@ -737,3 +713,9 @@ hand1 = hf.create_hand(str1, 1)
 print(str1)
 for melds, pair in mg.yield_melds_with_pair(hand1.all_tiles_dict, []):
     print(*[str(meld) for meld in melds], *pair)
+
+str2 = '222233334444m'
+hand2 = hf.create_hand(str2, 1)
+print(str2)
+for melds in mg.yield_melds(hand2.all_tiles_dict, []):
+    print(*[str(meld) for meld in melds])
