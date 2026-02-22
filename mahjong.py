@@ -242,6 +242,7 @@ class OpenMeldKind(StrEnum):
 MeldKind = ClosedMeldKind | OpenMeldKind
 
 @dataclass
+@total_ordering
 class Meld:
     tiles: list[Tile]
     is_open: bool = False
@@ -254,6 +255,13 @@ class Meld:
 
     def __str__(self) -> str:
         return f'{'Open' if self.is_open else 'Closed'}Meld[{' '.join([*map(str, self.tiles)])}]'
+
+    def __lt__(self, other: object) -> bool:
+        match other:
+            case Meld(tiles=tiles, is_open=is_open):
+                return (self.tiles, self.is_open) < (tiles, is_open)
+            case _:
+                raise ValueError
 
     @property
     def meld_kind(self) -> MeldKind | None:
@@ -430,7 +438,7 @@ class UnderState(StrEnum):
     UNDER_THE_RIVER = 'Under the River'
 
 class MeldGenerator:
-    def _yield_melds(self, tiles_sorteddict: SortedDict[Tile, int], melds: list[Meld]) -> Generator[list[Meld], None, None]:
+    def _yield_melds(self, tiles_sorteddict: SortedDict[Tile, int], melds: list[Meld], *, previous_meld: Meld | None = None) -> Generator[list[Meld], None, None]:
         if sum(tiles_sorteddict.values()) % 3 != 0:
             # check if tile count can be grouped into 3s
             raise ValueError('Total number of tiles not divisible by 3; cannot group into melds')
@@ -440,21 +448,6 @@ class MeldGenerator:
         else:
             # get leftmost "unmelded" tile in dictionary (hence the SortedDict use)
             first_tile, first_tile_freq = tiles_sorteddict.peekitem(index=0)
-
-            # check if first_tile can be part of a triplet
-            if first_tile_freq >= 3:
-                # remove triplet of first_tile
-                tiles_sorteddict[first_tile] -= 3
-                if tiles_sorteddict[first_tile] == 0:
-                    del tiles_sorteddict[first_tile]
-
-                new_meld = Meld([first_tile for _ in range(3)])
-                melds.append(new_meld)
-                yield from self._yield_melds(tiles_sorteddict, melds)
-
-                # undo updates
-                tiles_sorteddict[first_tile] = tiles_sorteddict.get(first_tile, 0) + 3
-                melds.pop()
 
             # check if first_tile can be part of a sequence
             match first_tile:
@@ -472,7 +465,9 @@ class MeldGenerator:
 
                         new_meld = Meld(new_meld_list)
                         melds.append(new_meld)
-                        yield from self._yield_melds(tiles_sorteddict, melds)
+                        # only yield melds in "increasing order" to avoid yielding redundant meld permutations
+                        if previous_meld is None or previous_meld <= new_meld:
+                            yield from self._yield_melds(tiles_sorteddict, melds, previous_meld=new_meld)
 
                         # undo updates
                         for t in new_meld_list:
@@ -480,6 +475,23 @@ class MeldGenerator:
                         melds.pop()
                 case _:
                     pass
+
+            # check if first_tile can be part of a triplet
+            if first_tile_freq >= 3:
+                # remove triplet of first_tile
+                tiles_sorteddict[first_tile] -= 3
+                if tiles_sorteddict[first_tile] == 0:
+                    del tiles_sorteddict[first_tile]
+
+                new_meld = Meld([first_tile for _ in range(3)])
+                melds.append(new_meld)
+                # only yield melds in "increasing order" to avoid yielding redundant meld permutations
+                if previous_meld is None or previous_meld <= new_meld:
+                    yield from self._yield_melds(tiles_sorteddict, melds, previous_meld=new_meld)
+
+                # undo updates
+                tiles_sorteddict[first_tile] = tiles_sorteddict.get(first_tile, 0) + 3
+                melds.pop()
         
     def yield_melds(self, tiles_dict: dict[Tile, int], melds: list[Meld]) -> Generator[list[Meld], None, None]:
         tiles_sorteddict: SortedDict[Tile, int] = SortedDict()
