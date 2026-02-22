@@ -8,38 +8,46 @@ scorer = RiichiMahjongScorer()
 # MARK: 13o
 # 13 Orphans (+ 13-wait)
 def test_13o():
-    assert scorer.count_yakuman(
+    assert scorer.get_yakuman(
         hf.create_hand('199m 19p 19s 123467z'), tf.create_tile('5z'),
         win_type=WinType.RON
-    ) == 1
+    ) == {
+        SingleYakuman.THIRTEEN_ORPHANS: 1
+    }
 
-    assert scorer.count_yakuman(
+    assert scorer.get_yakuman(
         hf.create_hand('19m 19p 1s 12344567z'), tf.create_tile('9s'),
         win_type=WinType.TSUMO
-    ) == 1
+    ) == {
+        SingleYakuman.THIRTEEN_ORPHANS: 1
+    }
 
-    assert scorer.count_yakuman(
+    assert scorer.get_yakuman(
         hf.create_hand('19m 19p 99s 1234567z'), tf.create_tile('1s'),
         win_type=WinType.TSUMO
-    ) == 1
+    ) == {
+        SingleYakuman.THIRTEEN_ORPHANS: 1
+    }
 
 def test_13o_13wait():
     for tile in ('1m', '9m', '1p', '9p', '1s', '9s', '1z', '2z', '3z', '4z', '5z', '6z', '7z'):
-        assert scorer.count_yakuman(
+        assert scorer.get_yakuman(
             hf.create_hand('19m 19p 19s 1234567z'), tf.create_tile(tile),
             win_type=WinType.TSUMO
-        ) == 2
+        ) == {
+            DoubleYakuman.THIRTEEN_WAIT_THIRTEEN_ORPHANS: 2
+        }
 
 def test_13o_wrong():
-    assert scorer.count_yakuman(
+    assert scorer.get_yakuman(
         hf.create_hand('19m 19p 99s 1234567z'), tf.create_tile('1m'),
         win_type=WinType.RON
-    ) == 0
+    ) == {}
 
-    assert scorer.count_yakuman(
+    assert scorer.get_yakuman(
         hf.create_hand('19m 19p 19s 2345667z'), tf.create_tile('2z'),
         win_type=WinType.RON
-    ) == 0
+    ) == {}
 
 # ---
 
