@@ -8,20 +8,20 @@ from tile_enums import TileSuit, Wind, Dragon
 @dataclass
 @total_ordering
 class SuitedTile:
-    rank: int
-    suit: TileSuit
-    red_dora: bool = False
+    _rank: int
+    _suit: TileSuit
+    _red_dora: bool = False
 
     def __hash__(self) -> int:
-        return hash((__class__.__name__, self.rank, self.suit, self.red_dora))
+        return hash((__class__.__name__, self._rank, self._suit, self._red_dora))
 
     def __str__(self) -> str:
-        return f'({self.rank}{'R' if self.red_dora else ''},{self.suit})'
+        return f'({self._rank}{'R' if self._red_dora else ''},{self._suit})'
 
     def __eq__(self, other: object) -> bool:
         match other:
-            case SuitedTile(rank=rank, suit=suit):
-                return (self.suit, self.rank) == (suit, rank)
+            case SuitedTile(_rank=rank, _suit=suit):
+                return (self._suit, self._rank) == (suit, rank)
             case HonorTile():
                 return False
             case _:
@@ -29,8 +29,8 @@ class SuitedTile:
 
     def __lt__(self, other: object) -> bool:
         match other:
-            case SuitedTile(rank=rank, suit=suit):
-                return (self.suit, self.rank) < (suit, rank)
+            case SuitedTile(_rank=rank, _suit=suit):
+                return (self._suit, self._rank) < (suit, rank)
             case HonorTile():
                 return True
             case _:
@@ -38,26 +38,26 @@ class SuitedTile:
 
     @property
     def is_terminal(self) -> bool:
-        return self.rank == 1 or self.rank == 9
+        return self._rank == 1 or self._rank == 9
 
 @dataclass
 @total_ordering
 class HonorTile:
-    symbol: Wind | Dragon
+    _symbol: Wind | Dragon
 
     def __hash__(self) -> int:
-        return hash((__class__.__name__, self.symbol))
+        return hash((__class__.__name__, self._symbol))
 
     def __str__(self) -> str:
-        return f'({self.symbol})'
+        return f'({self._symbol})'
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Tile):
             match other:
                 case SuitedTile():
                     return False
-                case HonorTile(symbol=symbol):
-                    return self.symbol == symbol
+                case HonorTile(_symbol=symbol):
+                    return self._symbol == symbol
         else:
             raise ValueError
 
@@ -66,8 +66,8 @@ class HonorTile:
             match other:
                 case SuitedTile():
                     return False
-                case HonorTile(symbol=symbol):
-                    return self.symbol < symbol
+                case HonorTile(_symbol=symbol):
+                    return self._symbol < symbol
         else:
             raise ValueError
 

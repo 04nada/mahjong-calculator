@@ -9,42 +9,46 @@ from tile import SuitedTile, Tile, TileFactory
 @dataclass
 @total_ordering
 class Meld:
-    tiles: list[Tile]
-    is_open: bool = False
+    _tiles: list[Tile]
+    _is_open: bool = False
 
     def __len__(self) -> int:
-        return len(self.tiles)
+        return len(self._tiles)
 
     def __repr__(self) -> str:
-        return f'{'Open' if self.is_open else 'Closed'}Meld[{' '.join([*map(repr, self.tiles)])}]'
+        return f'{'Open' if self._is_open else 'Closed'}Meld[{' '.join([*map(repr, self._tiles)])}]'
 
     def __str__(self) -> str:
-        return f'{'Open' if self.is_open else 'Closed'}Meld[{' '.join([*map(str, self.tiles)])}]'
+        return f'{'Open' if self._is_open else 'Closed'}Meld[{' '.join([*map(str, self._tiles)])}]'
 
     def __lt__(self, other: object) -> bool:
         match other:
-            case Meld(tiles=tiles, is_open=is_open):
-                return (self.tiles, self.is_open) < (tiles, is_open)
+            case Meld(_tiles=tiles, _is_open=is_open):
+                return (self._tiles, self._is_open) < (tiles, is_open)
             case _:
                 raise ValueError
+            
+    @property
+    def tiles(self) -> list[Tile]:
+        return self._tiles
 
     @property
     def meld_kind(self) -> MeldKind | None:
-        match len(self.tiles):
+        match len(self._tiles):
             case 3:
-                if self.tiles[0] == self.tiles[1] == self.tiles[2]:
-                    return OpenMeldKind.PON if self.is_open else ClosedMeldKind.TRIPLET
+                if self._tiles[0] == self._tiles[1] == self._tiles[2]:
+                    return OpenMeldKind.PON if self._is_open else ClosedMeldKind.TRIPLET
                 else:
-                    match self.tiles[0]:
-                        case SuitedTile(rank=rank, suit=suit):
-                            if rank <= 7 and self.tiles[1] == SuitedTile(rank+1, suit) and self.tiles[2] == SuitedTile(rank+2, suit):
-                                return OpenMeldKind.CHII if self.is_open else ClosedMeldKind.SEQUENCE
+                    match self._tiles[0]:
+                        case SuitedTile(_rank=rank, _suit=suit):
+                            if rank <= 7 and self._tiles[1] == SuitedTile(rank+1, suit) and self._tiles[2] == SuitedTile(rank+2, suit):
+                                return OpenMeldKind.CHII if self._is_open else ClosedMeldKind.SEQUENCE
                             else:
                                 return None
                         case _:
                             return None
             case 4:
-                if self.is_open and self.tiles[0] == self.tiles[1] == self.tiles[2] == self.tiles[3]:
+                if self._is_open and self._tiles[0] == self._tiles[1] == self._tiles[2] == self._tiles[3]:
                     return OpenMeldKind.KAN
                 else:
                     return None
@@ -54,10 +58,10 @@ class Meld:
 # ---
 
 class MeldFactory:
-    tile_factory: TileFactory
+    _tile_factory: TileFactory
 
     def __init__(self, tile_factory: TileFactory):
-        self.tile_factory = tile_factory
+        self._tile_factory = tile_factory
 
     def create_meld(self, raw: str, is_open: bool = False) -> Meld:
         tiles: list[Tile] = []
@@ -67,7 +71,7 @@ class MeldFactory:
             suit = raw[-1]
 
             for rank_str in ranks:
-                tiles.append(self.tile_factory.create_tile(f'{rank_str}{suit}'))
+                tiles.append(self._tile_factory.create_tile(f'{rank_str}{suit}'))
         except:
             raise ValueError
 
