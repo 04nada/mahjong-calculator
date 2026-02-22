@@ -1,6 +1,7 @@
 from collections import Counter
 from dataclasses import dataclass
 from enum import Enum, StrEnum, auto
+from functools import total_ordering
 from typing import Generator
 from sortedcontainers import SortedDict
 
@@ -30,6 +31,14 @@ class TileSuit(Enum):
             case TileSuit.SOU:
                 return 'SOU'
 
+    def __lt__(self, other: object) -> bool:
+        match other:
+            case TileSuit():
+                return self.value < other.value
+            case _:
+                raise ValueError
+
+@total_ordering
 class Wind(Enum):
     EAST = auto()
     SOUTH = auto()
@@ -62,6 +71,25 @@ class Wind(Enum):
             case _:
                 raise ValueError
 
+    def __eq__(self, other: object) -> bool:
+        match other:
+            case Wind():
+                return self == other
+            case Dragon():
+                return True
+            case _:
+                raise ValueError
+
+    def __lt__(self, other: object) -> bool:
+        match other:
+            case Wind():
+                return self < other
+            case Dragon():
+                return True
+            case _:
+                raise ValueError
+
+@total_ordering
 class Dragon(Enum):
     @staticmethod
     def _generate_next_value_(name: str, start: int, count: int, last_values: list[auto]):
@@ -92,7 +120,26 @@ class Dragon(Enum):
             case _:
                 raise ValueError
 
+    def __eq__(self, other: object) -> bool:
+        match other:
+            case Wind():
+                return False
+            case Dragon():
+                return self.value == other.value
+            case _:
+                raise ValueError
+
+    def __lt__(self, other: object) -> bool:
+        match other:
+            case Wind():
+                return False
+            case Dragon():
+                return self.value < other.value
+            case _:
+                raise ValueError
+
 @dataclass
+@total_ordering
 class SuitedTile:
     rank: int
     suit: TileSuit
@@ -104,11 +151,30 @@ class SuitedTile:
     def __str__(self) -> str:
         return f'({self.rank}{'R' if self.red_dora else ''},{self.suit})'
 
+    def __eq__(self, other: object) -> bool:
+        match other:
+            case SuitedTile(rank=rank, suit=suit):
+                return (self.suit, self.rank) == (suit, rank)
+            case HonorTile():
+                return False
+            case _:
+                raise ValueError
+
+    def __lt__(self, other: object) -> bool:
+        match other:
+            case SuitedTile(rank=rank, suit=suit):
+                return (self.suit, self.rank) < (suit, rank)
+            case HonorTile():
+                return True
+            case _:
+                raise ValueError
+
     @property
     def is_terminal(self) -> bool:
         return self.rank == 1 or self.rank == 9
 
 @dataclass
+@total_ordering
 class HonorTile:
     symbol: Wind | Dragon
 
@@ -118,19 +184,27 @@ class HonorTile:
     def __str__(self) -> str:
         return f'({self.symbol})'
 
+    def __eq__(self, other: object):
+        if isinstance(other, Tile):
+            match other:
+                case SuitedTile():
+                    return False
+                case HonorTile(symbol=symbol):
+                    return self.symbol == symbol
+        else:
+            raise ValueError
+
+    def __lt__(self, other: object):
+        if isinstance(other, Tile):
+            match other:
+                case SuitedTile():
+                    return False
+                case HonorTile(symbol=symbol):
+                    return self.symbol < symbol
+        else:
+            raise ValueError
+
 Tile = SuitedTile | HonorTile
-
-# ---
-
-def tile_order(t: Tile) -> int:
-    match t:
-        case SuitedTile(rank=rank, suit=suit):
-            return suit.value + rank
-        case HonorTile(symbol=symbol):
-            return 9*len(TileSuit) + symbol.value
-
-def sorted_tiles(tiles: list[Tile]) -> list[Tile]:
-    return sorted(tiles, key=tile_order)
 
 # ---
 
@@ -436,7 +510,7 @@ class RiichiMahjongScorer:
 
     def get_yakuman(self, hand: Hand, winning_tile: Tile, *, win_type: WinType) -> dict[Yakuman, int]:
         yakuman: dict[Yakuman, int] = {}
-        TILES: list[Tile] = sorted_tiles([*hand.all_tiles, winning_tile])
+        TILES: list[Tile] = sorted([*hand.all_tiles, winning_tile])
         TILES_DICT: dict[Tile, int] = dict(Counter(TILES))
         assert len(TILES) == TILES_PER_HAND+1
 
@@ -490,7 +564,7 @@ class RiichiMahjongScorer:
         han, _ = 0, 0
 
         #HAND_DICT: dict[Tile, int] = dict(Counter(hand.tiles))
-        TILES: list[Tile] = sorted_tiles([*hand.all_tiles, winning_tile])
+        TILES: list[Tile] = sorted([*hand.all_tiles, winning_tile])
         #TILES_DICT: dict[Tile, int] = dict(Counter(TILES))
 
         # add han from Riichi/Ippatsu
@@ -621,27 +695,15 @@ tf = TileFactory()
 mf = MeldFactory(tf)
 hf = HandFactory(tf, mf)
 scorer = RiichiMahjongScorer()
-
-tile1 = tf.create_tile('4s')
-print(tile1)
-print(repr(tile1))
-print()
-
-tile2 = tf.create_tile('0s')
-print(tile2)
-print(repr(tile2))
-print()
-
-meld1 = mf.create_meld('123s')
-print(meld1)
-print(repr(meld1))
-print()
+mg = MeldGenerator()
 
 hand1 = hf.create_hand('233445m 345s 2377p', 1)
-print(hand1)
-print(repr(hand1))
-print()
+#print(hand1)
+#print(repr(hand1))
 
 hand2 = hf.create_hand('222m 3334p 555s-222z', 1)
-print(hand2)
-print(repr(hand2))
+#print(hand2)
+#print(repr(hand2))
+
+for melds in mg.yield_melds(hand1.all_tiles_dict, []):
+    print(melds)
