@@ -451,13 +451,14 @@ class RiichiMahjongScorer:
                 yakuman[SingleYakuman.THIRTEEN_ORPHANS] = 1
 
         # 4CT
+        # TODO: consider closed kans for 4CT
         if set(TILES_DICT.values()) == {2,3,3,3,3}:
-            match set(hand.all_tiles_dict) == {1,3,3,3,3}, win_type:
-                case True, WinType.TSUMO:
+            match set(hand.all_tiles_dict.values()) == {1,3,3,3,3}, win_type:
+                case True, _:
                     # Suuankou Tanki / Four Concealed Triplets - Tanki Wait
                     # Tanki wait (Double Yakuman)
-                    yakuman[DoubleYakuman.FOUR_CONCEALED_TRIPLETS_TANKI] = 1
-                case (True, WinType.RON) | (False, WinType.TSUMO):
+                    yakuman[DoubleYakuman.FOUR_CONCEALED_TRIPLETS_TANKI] = 2
+                case False, WinType.TSUMO:
                     # Suuankou / Four Concealed Triplets
                     # regular (Single Yakuman)
                     yakuman[SingleYakuman.FOUR_CONCEALED_TRIPLETS] = 1
