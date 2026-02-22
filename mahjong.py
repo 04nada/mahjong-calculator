@@ -1,14 +1,13 @@
+from collections import Counter
 from dataclasses import dataclass
 from enum import Enum, StrEnum, auto
-
-MIN_TILE_RANK = 1
-MAX_TILE_RANK = 9
+from typing import Generator
+from sortedcontainers import SortedDict
 
 class TileSuit(Enum):
     @staticmethod
     def _generate_next_value_(name: str, start: int, count: int, last_values: list[auto]):
-        return count * (MAX_TILE_RANK-MIN_TILE_RANK+1)
-
+        return count * 9
     MAN = auto()
     PIN = auto()
     SOU = auto()
@@ -32,16 +31,12 @@ class TileSuit(Enum):
                 return 'SOU'
 
 class Wind(Enum):
-    @staticmethod
-    def _generate_next_value_(name: str, start: int, count: int, last_values: list[auto]):
-        return count+1
-
     EAST = auto()
     SOUTH = auto()
     WEST = auto()
     NORTH = auto()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         match self:
             case Wind.EAST:
                 return 'EAST'
@@ -54,7 +49,7 @@ class Wind(Enum):
             case _:
                 raise ValueError
 
-    def __str__(self):
+    def __str__(self) -> str:
         match self:
             case Wind.EAST:
                 return 'EAST'
@@ -68,12 +63,14 @@ class Wind(Enum):
                 raise ValueError
 
 class Dragon(Enum):
-    _start = [w.value for w in Wind][-1]
+    @staticmethod
+    def _generate_next_value_(name: str, start: int, count: int, last_values: list[auto]):
+        return count + [w.value for w in Wind][-1]+1
     WHITE = auto()
     GREEN = auto()
     RED = auto()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         match self:
             case Dragon.WHITE:
                 return 'WHITE'
@@ -84,7 +81,7 @@ class Dragon(Enum):
             case _:
                 raise ValueError
 
-    def __str__(self):
+    def __str__(self) -> str:
         match self:
             case Dragon.WHITE:
                 return 'WHITE'
@@ -101,19 +98,25 @@ class SuitedTile:
     suit: TileSuit
     red_dora: bool = False
 
-    def __repr__(self) -> str:
-        return f'SuitedTile({self.rank},{self.suit})'
+    def __hash__(self) -> int:
+        return hash((__class__.__name__, self.rank, self.suit, self.red_dora))
+
+    def __str__(self) -> str:
+        return f'({self.rank}{'R' if self.red_dora else ''},{self.suit})'
 
     @property
     def is_terminal(self) -> bool:
-        return self.rank == MIN_TILE_RANK or self.rank == MAX_TILE_RANK
+        return self.rank == 1 or self.rank == 9
 
 @dataclass
 class HonorTile:
     symbol: Wind | Dragon
 
-    def __repr__(self) -> str:
-        return f'HonorTile({self.symbol})'
+    def __hash__(self) -> int:
+        return hash((__class__.__name__, self.symbol))
+
+    def __str__(self) -> str:
+        return f'({self.symbol})'
 
 Tile = SuitedTile | HonorTile
 
@@ -124,7 +127,7 @@ def tile_order(t: Tile) -> int:
         case SuitedTile(rank=rank, suit=suit):
             return suit.value + rank
         case HonorTile(symbol=symbol):
-            return (MAX_TILE_RANK - MIN_TILE_RANK + 1)*len(TileSuit) + symbol.value
+            return 9*len(TileSuit) + symbol.value
 
 def sorted_tiles(tiles: list[Tile]) -> list[Tile]:
     return sorted(tiles, key=tile_order)
@@ -159,9 +162,7 @@ class TileFactory:
                         red_dora = True
                     return SuitedTile(rank, TileSuit.SOU, red_dora)
                 case n, 'z':
-                    print(f'? {n}z')
                     for w in Wind:
-                        print(w.value, int(n))
                         if w.value == int(n):
                             return HonorTile(Wind(int(n)))
                     for d in Dragon:
@@ -173,9 +174,16 @@ class TileFactory:
 
 # ---
 
-class MeldKind(StrEnum):
+class ClosedMeldKind(StrEnum):
     SEQUENCE = auto()
-    TRIPLE = auto()
+    TRIPLET = auto()
+
+class OpenMeldKind(StrEnum):
+    CHII = 'Chii'
+    PON = 'Pon'
+    KAN = 'Kan'
+
+MeldKind = ClosedMeldKind | OpenMeldKind
 
 @dataclass
 class Meld:
@@ -186,10 +194,33 @@ class Meld:
         return len(self.tiles)
 
     def __repr__(self):
-        return f'[{' '.join([*map(str, self.tiles)])}]'
+        return f'{'Open' if self.is_open else 'Closed'}Meld[{' '.join([*map(str, self.tiles)])}]'
 
     def __str__(self):
-        return ' '.join([*map(str, self.tiles)])
+        return f'{'Open' if self.is_open else 'Closed'}Meld[{' '.join([*map(str, self.tiles)])}]'
+
+    @property
+    def meld_kind(self) -> MeldKind | None:
+        match len(self.tiles):
+            case 3:
+                if self.tiles[0] == self.tiles[1] == self.tiles[2]:
+                    return OpenMeldKind.PON if self.is_open else ClosedMeldKind.TRIPLET
+                else:
+                    match self.tiles[0]:
+                        case SuitedTile(rank=rank, suit=suit):
+                            if rank <= 7 and self.tiles[1] == SuitedTile(rank+1, suit) and self.tiles[2] == SuitedTile(rank+2, suit):
+                                return OpenMeldKind.CHII if self.is_open else ClosedMeldKind.SEQUENCE
+                            else:
+                                return None
+                        case _:
+                            return None
+            case 4:
+                if self.is_open and self.tiles[0] == self.tiles[1] == self.tiles[2] == self.tiles[3]:
+                    return OpenMeldKind.KAN
+                else:
+                    return None
+            case _:
+                return None
 
 class MeldFactory:
     tile_factory: TileFactory
@@ -225,10 +256,10 @@ class Hand:
         return len(self.tiles)
     
     def __repr__(self):
-        return f'Hand({' '.join([*map(repr, self.tiles), *map(repr, self.open_melds)])})'
+        return f'Hand({' '.join([*map(repr, self.tiles), *map(repr, self.open_melds)])}{f' + {self.num_kita} kita' if self.num_kita > 0 else ''})'
 
     def __str__(self):
-        return f'Hand({' '.join([*map(str, self.tiles), *map(str, self.open_melds)])})'
+        return f'Hand({' '.join([*map(str, self.tiles), *map(str, self.open_melds)])}{f' + {self.num_kita} kita' if self.num_kita > 0 else ''})'
 
     @property
     def all_tiles(self) -> list[Tile]:
@@ -239,7 +270,11 @@ class Hand:
             ret.extend(m.tiles)
         
         return ret
-    
+
+    @property
+    def all_tiles_dict(self) -> dict[Tile, int]:
+        return dict(Counter(self.all_tiles))
+
     @property
     def all_tiles_with_kita(self) -> list[Tile]:
         ret: list[Tile] = []
@@ -254,8 +289,12 @@ class Hand:
         return ret
 
     @property
-    def is_open(self):
-        return len(self.open_melds) == 0
+    def all_tiles_with_kita_dict(self) -> dict[Tile, int]:
+        return dict(Counter(self.all_tiles_with_kita))
+
+    @property
+    def is_open(self) -> bool:
+        return len(self.open_melds) > 0
     
 class HandFactory:
     tile_factory: TileFactory
@@ -299,61 +338,196 @@ class HandFactory:
 
 # ---
 
+class DoubleYakuman(StrEnum):
+    THIRTEEN_WAIT_THIRTEEN_ORPHANS = '13-wait 13 Orphans'
+    FOUR_CONCEALED_TRIPLETS_TANKI = 'Four Concealed Triplets - Tanki Wait'
+    TRUE_NINE_GATES = 'True Nine Gates'
+    FOUR_BIG_WINDS = 'Four Big Winds'
+
+class SingleYakuman(StrEnum):
+    THIRTEEN_ORPHANS = '13 Orphans'
+    FOUR_CONCEALED_TRIPLETS = 'Four Concealed Triplets'
+    BIG_THREE_DRAGONS = 'Big Three Dragons'
+    NINE_GATES = 'Nine Gates'
+    FOUR_LITTLE_WINDS = 'Four Little Winds'
+    ALL_HONORS = 'All Honors'
+    ALL_TRIPLETS = 'All Triplets'
+    ALL_GREEN = 'All Green'
+    FOUR_KANS = 'Four Kans'
+
+Yakuman = SingleYakuman | DoubleYakuman
+
+class WinType(StrEnum):
+    RON = 'Ron'
+    TSUMO = 'Tsumo'
+
 class RiichiState(StrEnum):
     NONE = ''
     RIICHI = 'Riichi'
     IPPATSU = 'Ippatsu'
+    DOUBLE_RIICHI = 'Double Riichi'
+    DOUBLE_RIICHI_IPPATSU = 'Double Riichi + Ippatsu'
 
 class UnderState(StrEnum):
     NONE = ''
     UNDER_THE_SEA = 'Under the Sea'
     UNDER_THE_RIVER = 'Under the River'
 
+class MeldGenerator:
+    def _yield_melds(self, tiles_sorteddict: SortedDict[Tile, int], melds: list[Meld]) -> Generator[list[Meld], None, None]:
+        # TODO: implement meld recursion
+        if sum(tiles_sorteddict.values()) == 0:
+            yield melds
+        elif sum(tiles_sorteddict.values()) < 3:
+            raise StopIteration
+        else:
+            first_tile, first_tile_freq = tiles_sorteddict.peekitem(index=0)
+
+            # check if first_tile can be part of a triple
+            if first_tile_freq >= 3:
+                tiles_sorteddict[first_tile] -= 3
+                new_meld = Meld([first_tile for _ in range(3)])
+                melds.append(new_meld)
+                yield from self._yield_melds(tiles_sorteddict, melds)
+
+                # undo updates
+                tiles_sorteddict[first_tile] += 3
+                melds.pop()
+
+            # check if first_tile can be part of a triple
+            match first_tile:
+                case SuitedTile(rank=rank, suit=suit):
+                    next1_tile = SuitedTile(rank+1, suit)
+                    next2_tile = SuitedTile(rank+2, suit)
+                    if rank <= 7 and tiles_sorteddict[next1_tile] >= 1 and tiles_sorteddict[next2_tile] >= 1:
+                        tiles_sorteddict[first_tile] -= 1
+                        tiles_sorteddict[next1_tile] -= 1
+                        tiles_sorteddict[next2_tile] -= 1
+                        new_meld = Meld([first_tile, next1_tile, next2_tile])
+                        melds.append(new_meld)
+
+                        yield from self._yield_melds(tiles_sorteddict, melds)
+                        # undo updates
+                        tiles_sorteddict[first_tile] += 1
+                        tiles_sorteddict[next1_tile] += 1
+                        tiles_sorteddict[next2_tile] += 1
+                        melds.pop()
+                case _:
+                    pass
+            
+            raise StopIteration
+
 class RiichiMahjongScorer:
-    def _count_yakuman(self, hand: Hand, winning_tile: Tile) -> int:
-        # todo: implement yakuman check
-        #yaku: list[str] = []
-        yakuman = 0
-        #TILES: list[Tile] = sorted_tiles([*hand.all_tiles, winning_tile])
+    def count_yakuman(self, yakuman: dict[Yakuman, int]) -> int:
+        return sum(yakuman.values())
+    
+    def count_han_fu(self, yaku: dict[str, tuple[int, int]]) -> tuple[int, int]:
+        han, fu = 0, 0
+        for y in yaku.values():
+            han += y[0]
+            fu += y[1]
+        return han, fu
+
+    def get_yakuman(self, hand: Hand, winning_tile: Tile, *, win_type: WinType) -> dict[Yakuman, int]:
+        yakuman: dict[Yakuman, int] = {}
+        TILES: list[Tile] = sorted_tiles([*hand.all_tiles, winning_tile])
+        TILES_DICT: dict[Tile, int] = dict(Counter(TILES))
+        assert len(TILES) == TILES_PER_HAND+1
+
+        # 13o
+        set_13o: set[Tile] = {*(SuitedTile(i, s) for i in (1, 9) for s in TileSuit), *(HonorTile(w) for w in Wind), *(HonorTile(d) for d in Dragon)}
+        if set(TILES) == set_13o:
+            if set(hand.all_tiles) == set_13o:
+                # 13-wait (Double Yakuman)
+                yakuman[DoubleYakuman.THIRTEEN_WAIT_THIRTEEN_ORPHANS] = 2
+            else:
+                # regular (Single Yakuman)
+                yakuman[SingleYakuman.THIRTEEN_ORPHANS] = 1
+
+        # 4CT
+        if set(TILES_DICT.values()) == {2,3,3,3,3}:
+            match set(hand.all_tiles_dict) == {1,3,3,3,3}, win_type:
+                case True, WinType.TSUMO:
+                    # Suuankou Tanki / Four Concealed Triplets - Tanki Wait
+                    # Tanki wait (Double Yakuman)
+                    yakuman[DoubleYakuman.FOUR_CONCEALED_TRIPLETS_TANKI] = 1
+                case (True, WinType.RON) | (False, WinType.TSUMO):
+                    # Suuankou / Four Concealed Triplets
+                    # regular (Single Yakuman)
+                    yakuman[SingleYakuman.FOUR_CONCEALED_TRIPLETS] = 1
+                case False, WinType.RON:
+                    # cannot Ron the last triplet
+                    # only counts as 3CT (no Yakuman)
+                    pass
+
+        # TODO: Daisangen / Big Three Dragons
+        # TODO: Suushiihou / Four Winds
+            # TODO: Daisuushii / Four Big Winds
+            # TODO: Shousuushii / Four Little Winds
+        # TODO: / All Terminals 
+        # TODO: / All Honors
+        # TODO: / Nine Gates
+            # TODO: / True Nine Gates
+            # TODO: / Nine Gates
+        # TODO: / All Green
+        # TODO: / Four Kans
 
         return yakuman
 
-    def _count_han_fu(
+    def get_yaku(
             self, hand: Hand, winning_tile: Tile, *,
             round_wind: Wind, seat_wind: Wind,
-            riichi: RiichiState, under: UnderState,
-            dora: list[Tile], ura_dora: list[Tile]) -> tuple[int, int]:
-        yaku: list[str] = []
-        han, fu = 0, 0
+            win_type: WinType, riichi: RiichiState, under: UnderState,
+            dora: list[Tile], ura_dora: list[Tile]) -> dict[str, tuple[int, int]]:
+        yaku: dict[str, tuple[int, int]] = {}
+        han, _ = 0, 0
+
+        #HAND_DICT: dict[Tile, int] = dict(Counter(hand.tiles))
         TILES: list[Tile] = sorted_tiles([*hand.all_tiles, winning_tile])
+        #TILES_DICT: dict[Tile, int] = dict(Counter(TILES))
 
         # add han from Riichi/Ippatsu
         match riichi:
             case RiichiState.NONE:
                 pass
             case _:
+                # add han from Tsumo if Riichi
+                tsumo_han: int = 1 if win_type == WinType.TSUMO else 0
+                han += tsumo_han
+                if tsumo_han:
+                    yaku[WinType.TSUMO] = (tsumo_han, 0)
+
                 # add han from Ura Dora
-                ura_dora_count = 0
-                for ud in ura_dora:
-                    for tile in TILES:
-                        if ud == tile:
-                            ura_dora_count += 1
+                ura_dora_count = sum((1 for ud in ura_dora for t in TILES if ud == t))
                 han += ura_dora_count
                 if ura_dora_count:
-                    yaku.append(f'{han} Ura Dora')
+                    yaku[f'{ura_dora_count} Ura Dora'] = (ura_dora_count, 0)
 
-                # add han from Riichi/Ippatsu
+                # add han from Riichi/Double Riichi
+                riichi_han: int = 0
                 match riichi:
-                    case RiichiState.RIICHI:
-                        han += 1
-                    case RiichiState.IPPATSU:
-                        han += 2
-                yaku.append(riichi)
+                    case RiichiState.RIICHI | RiichiState.IPPATSU:
+                        riichi_han = 1
+                        yaku[RiichiState.RIICHI] = (riichi_han, 0)
+                    case RiichiState.DOUBLE_RIICHI | RiichiState.DOUBLE_RIICHI_IPPATSU:
+                        riichi_han = 2
+                        yaku[RiichiState.DOUBLE_RIICHI] = (riichi_han, 0)
+                han += riichi_han
+
+                # add han from Ippatsu
+                ippatsu_han: int = 0
+                match riichi:
+                    case RiichiState.IPPATSU | RiichiState.DOUBLE_RIICHI_IPPATSU:
+                        ippatsu_han = 1
+                        yaku[RiichiState.IPPATSU] = (ippatsu_han, 0)
+                    case _:
+                        ippatsu_han = 0
+                han += ippatsu_han
 
         # add han from Kita
         han += hand.num_kita
         if hand.num_kita:
-            yaku.append(f'{hand.num_kita} Kita')
+            yaku[f'{hand.num_kita} Kita'] = (hand.num_kita, 0)
 
         # add han from Red Dora
         red_dora_count = 0
@@ -366,28 +540,26 @@ class RiichiMahjongScorer:
                     pass
         han += red_dora_count
         if red_dora_count:
-            yaku.append(f'{red_dora_count} Red Dora')
+            yaku[f'{red_dora_count} Red Dora'] = (red_dora_count, 0)
 
         # add han from Dora
-        dora_count = 0
-        for d in dora:
-            for tile in TILES:
-                if d == tile:
-                    dora_count += 1
+        dora_count = sum((1 for d in dora for t in TILES if d == t))
         han += dora_count
         if dora_count:
-            yaku.append(f'{dora_count} Dora')
+            yaku[f'{dora_count} Dora'] = (dora_count, 0)
 
         # ---
 
-        # todo: implement actual yaku check
+        # TODO: implement actual yaku check using meld generator
 
         # ---
 
-        if len(yaku) == 0:
-           han, fu = 0, 0
+        # clear yaku if 0 han
+        if han == 0:
+            yaku.clear()
+            han, _ = 0, 0
 
-        return han, fu
+        return yaku
 
     def compute_base_points(self, yakuman: int, han: int, fu: int) -> int:
         if yakuman > 0:
@@ -414,32 +586,55 @@ class RiichiMahjongScorer:
     def get_points(
             self, hand: Hand, winning_tile: Tile, *,
             round_wind: Wind, seat_wind: Wind,
-            riichi: RiichiState, under: UnderState,
+            win_type: WinType, riichi: RiichiState, under: UnderState,
             dora: list[Tile], ura_dora: list[Tile]) -> int:
-        yakuman, han, fu = 0, 0, 0
+        num_yakuman, han, fu = 0, 0, 0
 
         if len(hand.tiles) + 3*len(hand.open_melds) == TILES_PER_HAND:
-            yakuman = self._count_yakuman(hand, winning_tile)
-            if yakuman == 0:
-                han, fu = self._count_han_fu(
+            yakuman = self.get_yakuman(hand, winning_tile, win_type=win_type)
+            num_yakuman = sum(yakuman.values())
+
+            if num_yakuman == 0:
+                yaku = self.get_yaku(
                     hand, winning_tile,
                     round_wind=round_wind, seat_wind=seat_wind,
-                    riichi=riichi, under=under,
+                    win_type=win_type, riichi=riichi, under=under,
                     dora=dora, ura_dora=ura_dora
                 )
 
-        return self.compute_base_points(yakuman, han, fu)
+                for y in yaku.values():
+                    han += y[0]
+                    fu += y[1]
+
+        return self.compute_base_points(num_yakuman, han, fu)
 
 # ---
 
-tile_factory = TileFactory()
-meld_factory = MeldFactory(tile_factory)
-hand_factory = HandFactory(tile_factory, meld_factory)
-
-raw1 = '45m 4555899p 88s 12z'
-hand1 = hand_factory.create_hand(raw1)
-print(raw1)
-print(hand1)
-
+tf = TileFactory()
+mf = MeldFactory(tf)
+hf = HandFactory(tf, mf)
 scorer = RiichiMahjongScorer()
-print(scorer.compute_base_points(0, 2, 60))
+
+tile1 = tf.create_tile('4s')
+print(tile1)
+print(repr(tile1))
+print()
+
+tile2 = tf.create_tile('0s')
+print(tile2)
+print(repr(tile2))
+print()
+
+meld1 = mf.create_meld('123s')
+print(meld1)
+print(repr(meld1))
+print()
+
+hand1 = hf.create_hand('233445m 345s 2377p', 1)
+print(hand1)
+print(repr(hand1))
+print()
+
+hand2 = hf.create_hand('222m 3334p 555s-222z', 1)
+print(hand2)
+print(repr(hand2))
