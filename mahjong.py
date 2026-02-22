@@ -7,13 +7,13 @@ from sortedcontainers import SortedDict
 
 class TileSuit(Enum):
     @staticmethod
-    def _generate_next_value_(name: str, start: int, count: int, last_values: list[auto]):
+    def _generate_next_value_(name: str, start: int, count: int, last_values: list[auto]) -> int:
         return count * 9
     MAN = auto()
     PIN = auto()
     SOU = auto()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         match self:
             case TileSuit.MAN:
                 return 'MAN'
@@ -22,7 +22,7 @@ class TileSuit(Enum):
             case TileSuit.SOU:
                 return 'SOU'
 
-    def __str__(self):
+    def __str__(self) -> str:
         match self:
             case TileSuit.MAN:
                 return 'MAN'
@@ -83,7 +83,7 @@ class Wind(Enum):
 @total_ordering
 class Dragon(Enum):
     @staticmethod
-    def _generate_next_value_(name: str, start: int, count: int, last_values: list[auto]):
+    def _generate_next_value_(name: str, start: int, count: int, last_values: list[auto]) -> int:
         return count + [w.value for w in Wind][-1]+1
     WHITE = auto()
     GREEN = auto()
@@ -166,7 +166,7 @@ class HonorTile:
     def __str__(self) -> str:
         return f'({self.symbol})'
 
-    def __eq__(self, other: object):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Tile):
             match other:
                 case SuitedTile():
@@ -176,7 +176,7 @@ class HonorTile:
         else:
             raise ValueError
 
-    def __lt__(self, other: object):
+    def __lt__(self, other: object) -> bool:
         if isinstance(other, Tile):
             match other:
                 case SuitedTile():
@@ -249,10 +249,10 @@ class Meld:
     def __len__(self) -> int:
         return len(self.tiles)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'{'Open' if self.is_open else 'Closed'}Meld[{' '.join([*map(repr, self.tiles)])}]'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{'Open' if self.is_open else 'Closed'}Meld[{' '.join([*map(str, self.tiles)])}]'
 
     @property
@@ -311,10 +311,10 @@ class Hand:
     def __len__(self) -> int:
         return len(self.tiles)
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'Hand({' '.join([*map(repr, self.tiles), *map(repr, self.open_melds)])}{f' + {self.num_kita} kita' if self.num_kita > 0 else ''})'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Hand({' '.join([*map(str, self.tiles), *map(str, self.open_melds)])}{f' + {self.num_kita} kita' if self.num_kita > 0 else ''})'
 
     @property
@@ -364,7 +364,7 @@ class HandFactory:
         tiles: list[Tile] = []
         open_melds: list[Meld] = []
 
-        raw_split = raw.split(' ')
+        raw_split: list[str] = raw.split(' ')
         if '-' in raw:
             raw_closed: list[str] = raw_split[:-1]
             raw_open: list[str] = raw_split[-1].split('-')
