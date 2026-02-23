@@ -18,15 +18,6 @@ class SuitedTile:
     def __str__(self) -> str:
         return f'({self._rank}{'R' if self._red_dora else ''},{self._suit})'
 
-    def __eq__(self, other: object) -> bool:
-        match other:
-            case SuitedTile(_rank=rank, _suit=suit):
-                return (self._suit, self._rank) == (suit, rank)
-            case HonorTile():
-                return False
-            case _:
-                raise ValueError
-
     def __lt__(self, other: object) -> bool:
         match other:
             case SuitedTile(_rank=rank, _suit=suit):
@@ -34,7 +25,19 @@ class SuitedTile:
             case HonorTile():
                 return True
             case _:
-                raise ValueError
+                raise TypeError
+
+    @property
+    def rank(self) -> int:
+        return self._rank
+
+    @property
+    def suit(self) -> TileSuit:
+        return self._suit
+
+    @property
+    def red_dora(self) -> bool:
+        return self._red_dora
 
     @property
     def is_terminal(self) -> bool:
@@ -51,25 +54,14 @@ class HonorTile:
     def __str__(self) -> str:
         return f'({self._symbol})'
 
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Tile):
-            match other:
-                case SuitedTile():
-                    return False
-                case HonorTile(_symbol=symbol):
-                    return self._symbol == symbol
-        else:
-            raise ValueError
-
     def __lt__(self, other: object) -> bool:
-        if isinstance(other, Tile):
-            match other:
-                case SuitedTile():
-                    return False
-                case HonorTile(_symbol=symbol):
-                    return self._symbol < symbol
-        else:
-            raise ValueError
+        match other:
+            case SuitedTile():
+                return False
+            case HonorTile(_symbol=symbol):
+                return self._symbol < symbol
+            case _:
+                raise TypeError
 
 Tile = SuitedTile | HonorTile
 
@@ -80,6 +72,8 @@ class TileFactory:
         if len(raw) != 2:
             raise ValueError(f'Raw string "{raw}" passed to TileFactory is not of length 2.')
         else:
+            if not raw[0].isdigit():
+                raise ValueError(f'Raw string "{raw}" passed to TileFactory does not have a numerical rank.')
             match raw[0], raw[1]:
                 case n, 'm':
                     rank = int(n)
@@ -105,10 +99,10 @@ class TileFactory:
                 case n, 'z':
                     for w in Wind:
                         if w.value == int(n):
-                            return HonorTile(Wind(int(n)))
+                            return HonorTile(w)
                     for d in Dragon:
                         if d.value == int(n):
-                            return HonorTile(Dragon(int(n)))
+                            return HonorTile(d)
                     raise ValueError('Invalid honor tile passed to TileFactory')
                 case _:
                     raise ValueError('Invalid tile kind passed to TileFactory')
