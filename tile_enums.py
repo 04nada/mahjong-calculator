@@ -51,8 +51,6 @@ class Wind(Enum):
                 return 'WEST'
             case Wind.NORTH:
                 return 'NORTH'
-            case _:
-                raise ValueError
 
     def __str__(self) -> str:
         match self:
@@ -64,8 +62,6 @@ class Wind(Enum):
                 return 'WEST'
             case Wind.NORTH:
                 return 'NORTH'
-            case _:
-                raise ValueError
 
     def __lt__(self, other: object) -> bool:
         match other:
@@ -93,8 +89,6 @@ class Dragon(Enum):
                 return 'GREEN'
             case Dragon.RED:
                 return 'RED'
-            case _:
-                raise ValueError
 
     def __str__(self) -> str:
         match self:
@@ -104,8 +98,6 @@ class Dragon(Enum):
                 return 'GREEN'
             case Dragon.RED:
                 return 'RED'
-            case _:
-                raise ValueError
 
     def __lt__(self, other: object) -> bool:
         match other:
