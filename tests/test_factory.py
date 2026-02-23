@@ -1,5 +1,3 @@
-from ast import Suite
-
 from mahjong import *
 
 tf = TileFactory()
@@ -79,7 +77,7 @@ def test_hand_factory():
                     SuitedTile(2, TileSuit.PIN),
                     SuitedTile(2, TileSuit.PIN),
                 ],
-                is_open=True
+                _is_open=True
             ),
             Meld(
                 [
@@ -87,7 +85,7 @@ def test_hand_factory():
                     HonorTile(Dragon.WHITE),
                     HonorTile(Dragon.WHITE),
                 ],
-                is_open=True
+                _is_open=True
             )
         ]
     )
@@ -125,7 +123,7 @@ def test_hand_factory():
                     SuitedTile(4, TileSuit.MAN),
                     SuitedTile(4, TileSuit.MAN),
                 ],
-                is_open=True
+                _is_open=True
             ),
             Meld(
                 [
@@ -133,7 +131,7 @@ def test_hand_factory():
                     HonorTile(Dragon.GREEN),
                     HonorTile(Dragon.GREEN),
                 ],
-                is_open=True
+                _is_open=True
             ),
             Meld(
                 [
@@ -141,7 +139,7 @@ def test_hand_factory():
                     HonorTile(Dragon.RED),
                     HonorTile(Dragon.RED),
                 ],
-                is_open=True
+                _is_open=True
             ),
         ]
     )
