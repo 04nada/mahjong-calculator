@@ -3,7 +3,8 @@ from mahjong import *
 tf = TileFactory()
 mf = MeldFactory(tf)
 hf = HandFactory(tf, mf)
-scorer = RiichiMahjongScorer()
+mg = MeldGenerator()
+scorer = RiichiMahjongScorer(mg)
 
 # MARK: 13o
 # 13 Orphans (+ 13-wait)
