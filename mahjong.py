@@ -1,6 +1,6 @@
 from collections import Counter
 from enum import StrEnum
-from typing import Generator
+from collections.abc import Generator
 from sortedcontainers import SortedDict
 
 from hand import Hand, HandFactory
