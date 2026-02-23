@@ -61,7 +61,7 @@ class MeldGenerator:
 
             # check if first_tile can be part of a sequence
             match first_tile:
-                case SuitedTile(_rank=rank, _suit=suit):
+                case SuitedTile(rank=rank, suit=suit):
                     next1_tile = SuitedTile(rank+1, suit)
                     next2_tile = SuitedTile(rank+2, suit)
                     new_meld_list: list[Tile] = [first_tile, next1_tile, next2_tile]
@@ -252,7 +252,7 @@ class RiichiMahjongScorer:
         red_dora_count = 0
         for tile in TILES:
             match tile:
-                case SuitedTile(_red_dora=red_dora):
+                case SuitedTile(red_dora=red_dora):
                     if red_dora:
                         red_dora_count += 1
                 case _:
